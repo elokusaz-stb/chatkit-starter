@@ -1,89 +1,59 @@
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ChatKit } from "@openai/chatkit/react";
 
-export function MyChat() {
-  const [error, setError] = useState<string | null>(null);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+export default function MyChat() {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || "https://chatkit-starter.onrender.com";
+
+  console.log("Backend URL:", backendUrl);
 
   useEffect(() => {
-    console.log("Backend URL:", backendUrl);
-  }, [backendUrl]);
+    async function initSession() {
+      try {
+        console.log("🟡 Creating ChatKit session...");
+        const res = await fetch(`${backendUrl}/api/chatkit/session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: "frontend-test" }),
+        });
 
-  const { control } = useChatKit({
-    api: {
-      async getClientSecret(currentClientSecret: string | null): Promise<string> {
-        const sessionUrl = `${backendUrl}/api/chatkit/session`;
-        console.log("Fetching client secret from:", sessionUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-        try {
-          const res = await fetch(sessionUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ device_id: crypto.randomUUID() }),
-          });
-
-          if (!res.ok) {
-            const msg = `Failed to fetch client secret: ${res.status} ${res.statusText}`;
-            console.error(msg);
-            setError(msg);
-            throw new Error(msg);
-          }
-
-          const data = await res.json();
-          const client_secret = data?.client_secret;
-
-          if (!client_secret) {
-            setError("❌ No client_secret returned from backend");
-            throw new Error("No client_secret in response");
-          }
-
-          console.log("✅ Received client_secret");
-          setError(null);
-          return client_secret;
-        } catch (err) {
-          console.error("Error fetching client secret:", err);
-          setError("⚠️ Could not connect to backend — check console logs.");
-          throw err;
+        if (data.client_secret) {
+          console.log("✅ Got client_secret:", data.client_secret.slice(0, 15) + "...");
+          setClientSecret(data.client_secret);
+        } else {
+          console.error("❌ No client_secret returned:", data);
         }
-      },
-    },
-  });
+      } catch (err) {
+        console.error("🔥 Error fetching ChatKit session:", err);
+      }
+    }
+
+    initSession();
+  }, []);
+
+  if (!clientSecret) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        Connecting to agent...
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{
-        height: 640,
-        width: 420,
-        margin: "2rem auto",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        background: "#fafafa",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {error ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "1rem",
-            color: "#b91c1c",
-            fontFamily: "sans-serif",
-            fontSize: "0.95rem",
+    <div className="flex items-center justify-center h-screen">
+      <div className="w-full max-w-md h-[600px] border border-gray-200 rounded-xl shadow-md overflow-hidden">
+        <ChatKit
+          clientSecret={clientSecret}
+          appearance={{
+            theme: "light",
           }}
-        >
-          <p>{error}</p>
-          <p style={{ color: "#6b7280", fontSize: "0.85rem" }}>
-            (Backend URL: {backendUrl})
-          </p>
-        </div>
-      ) : (
-        <ChatKit control={control} className="h-[640px] w-[420px]" />
-      )}
+        />
+      </div>
     </div>
   );
 }
