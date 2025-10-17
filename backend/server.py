@@ -1,37 +1,50 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from openai import OpenAI
 import os
 
+# Load .env for local dev (Render ignores this, but handy locally)
 load_dotenv()
 
 app = FastAPI()
 
-origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+# CORS: allow frontend origin
+frontend_origin = os.getenv("CORS_ORIGINS", "https://chatkit-starter-1.onrender.com")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-if origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-WORKFLOW_ID = os.environ["WORKFLOW_ID"]
-
+# Initialize OpenAI client
+openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 class SessionRequest(BaseModel):
-    device_id: str | None = None
+    user: str | None = "web-client"
 
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "ChatKit backend running"}
 
 @app.post("/api/chatkit/session")
-async def create_chatkit_session(payload: SessionRequest):
-    session = client.beta.chatkit.sessions.create(
-        workflow={"id": WORKFLOW_ID},
-        user=payload.device_id or "anon",
-    )
-    return {"client_secret": session.client_secret}
+def create_chatkit_session(req: SessionRequest):
+    """Create a ChatKit session linked to your workflow."""
+    try:
+        workflow_id = os.environ["WORKFLOW_ID"]
+        print(f"🔗 Creating ChatKit session for workflow: {workflow_id}")
+
+        session = openai.chatkit.sessions.create(
+            workflow={"id": workflow_id},
+            user=req.user,
+        )
+
+        print(f"✅ Session created: {session.id}")
+        return {"client_secret": session.client_secret}
+
+    except Exception as e:
+        print("❌ Error creating ChatKit session:", str(e))
+        return {"error": str(e)}
