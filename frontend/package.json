@@ -1,24 +1,24 @@
 {
   "name": "chatkit-frontend",
+  "version": "0.0.4",
   "private": true,
-  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --port 10000"
   },
   "dependencies": {
-    "@openai/chatkit-react": "^1.1.1",
+    "@openai/chatkit": "0.6.0",
+    "@openai/chatkit-react": "0.6.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.7.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.3",
-    "typescript": "^5.6.2",
-    "vite": "^5.4.8"
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.10"
   }
 }
